@@ -20,42 +20,64 @@ function ChatInterface() {
 
   // useRef to reference the input element
   const inputRef = useRef(null);
+  function simulateTypingEffect(message:string, delay = 30) {
+    return new Promise(async (resolve) => {
+      let typedMessage = "";
+  
+      for (let char of message) {
+        typedMessage += char;
+        setConversation((prevConversation) => [
+          ...prevConversation.slice(0, prevConversation.length - 1), // All messages except the last one
+          {
+            sender: "ChatGPT",
+            message: typedMessage,
+          },
+        ]);
+  
+        await new Promise((r) => setTimeout(r, delay));
+      }
+  
+      resolve();
+    });
+  }
+  
   async function handleSubmit() {
+    // Add user's input to the conversation immediately
+    setConversation((prevConversation) => [
+      ...prevConversation,
+      { sender: "User", message: inputText },
+      { sender: "ChatGPT", message: "..." }, // Placeholder for ChatGPT's response
+    ]);
+  
+    setInputText("");
     setIsLoading(true);
-
+  
     try {
       const gptResponse = await chapGPT(inputText);
       console.log("gptResponse", gptResponse);
-
+  
       const sanitizedMessage = DOMPurify.sanitize(gptResponse || " ");
-
-      setConversation((prevConversation) => [
-        ...prevConversation,
-        { sender: "User", message: inputText },
-        {
-          sender: "ChatGPT",
-          message: sanitizedMessage || "Some Error in the response",
-        },
-      ]);
-
-      setInputText("");
+  
+      // Remove the placeholder and simulate typing effect
+      await simulateTypingEffect(sanitizedMessage || "Some Error in the response");
+  
     } catch (error) {
-      // Display an error message in the chat interface
+      // Remove the placeholder and display an error message in the chat interface
       setConversation((prevConversation) => [
-        ...prevConversation,
-        { sender: "User", message: inputText },
+        ...prevConversation.slice(0, prevConversation.length - 1), // All messages except the last one
         {
           sender: "ChatGPT",
           message:
             "Sorry, there was an error processing your request. Please try again.",
         },
       ]);
-
+  
       console.error("Error calling the API:", error); // Log the error for debugging
     }
-
+  
     setIsLoading(false);
   }
+  
 
   // Handle pressing Enter to submit
   const handleKeyDown = (e: any) => {
